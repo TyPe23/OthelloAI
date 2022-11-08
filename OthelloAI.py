@@ -62,6 +62,7 @@ def checkPos(x, y):
         
         if (newX > 7 or newX < 0 or newY > 7 or newY < 0 or boardArr[newY][newX] == currVal):
             continue
+
         while (boardArr[newY][newX] == valToCheck):
             newX += xDir
             newY += yDir
@@ -88,6 +89,7 @@ def flipPieces(x, y):
         
         if (newX > 7 or newX < 0 or newY > 7 or newY < 0 or boardArr[newY][newX] == currVal):
             continue
+        
         while (boardArr[newY][newX] == valToCheck):
             newX += xDir
             newY += yDir
