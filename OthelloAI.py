@@ -142,7 +142,7 @@ def validMoves(count):
             if (checkPos(x, y)):
                 placePiece(x, y, "yellow")
                 valid.append([x,y])
-    #print(valid)
+    print(valid)
 
     if (turn == "black" and valid == [] and count < 2):
         turn = "white"
@@ -168,12 +168,12 @@ def cpuMove():
             y = tempy
             maxHeur = boardHeur[tempy][tempx]
 
-    
-    if (x, y != -1, -1 and cpu == "black"):
-        boardArr[y][x] = 1
-    else:
-        boardArr[y][x] = 2
-    flipPieces(x,y)
+    if (x, y != -1, -1):
+        if (cpu == "black"):
+            boardArr[y][x] = 1
+        else:
+            boardArr[y][x] = 2
+        flipPieces(x,y)
     turn = user
 
 
