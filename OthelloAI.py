@@ -10,19 +10,13 @@ An Intelligent Othello Player
 
 Othello game that can be played against either another person
 or against an AI which uses mini-max with alpha-beta pruning
- """
+"""
 
 
 import tkinter as tk
 import math
 
 window = tk.Tk()
-
-canvas = tk.Canvas(window, bg="green", height = 800, width=800)
-score = tk.Label(window, width=50, relief="raised", pady=10, font="Times 20 italic bold")
-victor = tk.Label(window, width=50, relief="raised", pady=10, font="Times 20 italic bold")
-score.pack(side="top")
-
 
 x = 0
 y = 0
@@ -56,6 +50,29 @@ cpu = "white"
 turn = user
 cpuOn = True
 
+canvas = tk.Canvas(window, bg="green", height = 800, width=800)
+score = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
+victor = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
+
+
+cpuBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"CPU: {cpuOn}") 
+colorBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"Player 1: {user}\tPlayer 2: {cpu}") 
+startBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = "Start Game") 
+
+def toggleCPU():
+    print("toggled CPU")
+    global cpuOn
+    cpuOn = not(cpuOn)
+    cpuBtn.config(text = f"CPU: {cpuOn}")
+
+def toggleColor():
+    print("toggled color")
+    global user
+    global cpu
+    global turn
+    user, cpu = cpu, user
+    turn = user
+    colorBtn.config(text = f"Player 1: {user}\tPlayer 2: {cpu}")
 
 
 
@@ -75,12 +92,12 @@ def drawBoard():
                 placePiece(x, y, "black")
             elif (boardArr[y][x] == 2):
                 placePiece(x, y, "white")
+        print("Board state:")
         print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
     print()
 
     blackScore, whiteScore = getScore()
-    myText = f"Black: {blackScore}\t\t\tWhite: {whiteScore}"
-    score.config(text = myText)
+    score.config(text = f"Black: {blackScore}\t\tWhite: {whiteScore}")
 
 
 def getScore():
@@ -109,8 +126,8 @@ def displayVictor():
     else:
         myText = "Tie!"
 
+    victor.grid(row=1, column=1, columnspan=2, ipadx = 280, ipady = 15, sticky="S")
     victor.config(text = myText)
-    victor.pack(side="top")
 
 
 def checkPos(x, y, board):
@@ -176,14 +193,14 @@ def flipPieces(x, y, board):
         if (board[newY][newX] == currVal):
             newX -= xDir
             newY -= yDir
-            print(f"{newX},{newY}")
+            #print(f"{newX},{newY}")
             while (board[newY][newX] == valToCheck):
                 board[newY][newX] = currVal
                 newX -= xDir
                 newY -= yDir
                 if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
                     break
-                print(f"{newX},{newY}")
+                #print(f"{newX},{newY}")
 
 
 def validMoves(count, board):
@@ -203,7 +220,7 @@ def validMoves(count, board):
             if (checkPos(x, y, board)):
                 placePiece(x, y, "yellow")
                 valid.append([x,y])
-    print(valid)
+    print(f"Valid moves: {valid}\n")
 
     if (turn == user and valid == [] and count < 2):
         turn = cpu
@@ -234,8 +251,7 @@ def cpuMove(count, board):
             boardArr[y][x] = 1
         else:
             boardArr[y][x] = 2
-        print(f"CPU placed at: {x}, {y}")
-        print()
+        print(f"CPU placed at: {x}, {y}\n")
         flipPieces(x,y, board)
     turn = user
 
@@ -271,11 +287,23 @@ def mouseXY(event):
     validMoves(0, boardArr)
 
 
+def startGame():
+    colorBtn.config(state="disabled")
+    validMoves(0, boardArr)
+    window.bind("<Button-1>", mouseXY)
 
 
 
-validMoves(0, boardArr)
+canvas.grid(row=0, column=0, rowspan=8)
+score.grid(row=0, column=1, columnspan=2, ipadx = 195, ipady = 18, sticky="N")
+cpuBtn.grid(row=0, column=1, ipadx = 20, ipady = 15, sticky= "SW")
+colorBtn.grid(row=0, column=2, ipadx = 50, ipady = 15, sticky= "SE")
+startBtn.grid(row=1, column=1, columnspan=2, ipadx = 280, ipady = 15, sticky="N")
+victor.grid(row=1, column=1, columnspan=2, ipadx = 355, ipady = 20, sticky="S")
+cpuBtn.config(command=toggleCPU)
+colorBtn.config(command=toggleColor)
+startBtn.config(command=startGame)
 
-canvas.pack(side="left")
-window.bind("<Button-1>", mouseXY)
+drawBoard()
+
 window.mainloop()
