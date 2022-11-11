@@ -231,11 +231,29 @@ def validMoves(turn, board):
 
 
 def getHeur(x, y, turn, board):
+
     blackScore, whiteScore = getScore(board)
-    if (turn == "black"):
-        return boardHeur[y][x] * (blackScore - whiteScore) / (blackScore + whiteScore)
+    total = 0
+
+    for x in range(8):
+        for y in range(8):
+            if (board[y][x] == 1):
+                if (turn == cpu):
+                    total += boardHeur[y][x]
+                else:
+                    total -= boardHeur[y][x]
+            elif (board[y][x] == 2):
+                if (turn == user):
+                    total -= boardHeur[y][x]
+                else:
+                    total += boardHeur[y][x]
+
+    return boardHeur[y][x] * total
+
+    """ if (turn == "black"):
+        return boardHeur[y][x] * blackScore # / (blackScore + whiteScore)
     else:
-        return boardHeur[y][x] * (whiteScore - blackScore) / (blackScore + whiteScore)
+        return boardHeur[y][x] * whiteScore # / (blackScore + whiteScore) """
 
 
 def minimax(valid, depth, alpha, beta, turn, board):
@@ -329,6 +347,12 @@ def mouseXY(event):
         turnCount = 0
         flipPieces(x,y, turn, boardArr)
         turn = user
+    elif (turn == cpu and valid == []):
+        turnCount += 1
+        turn = user
+    elif (turn == user and valid == []):
+        turnCount += 1
+        turn = cpu
     
     print(f"User placed at: {x}, {y}")
     print()
