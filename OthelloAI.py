@@ -12,26 +12,22 @@ Othello game that can be played against either another person
 or against an AI which uses mini-max with alpha-beta pruning
 """
 
-
 import tkinter as tk
 import math
+from time import sleep
+import copy
 
 window = tk.Tk()
 
-x = 0
-y = 0
-
-valid = []
-
 boardHeur = [
-    [10,-5, 5, 5, 5, 5,-5,10],
-    [-5,-5,-3,-3,-3,-3,-5,-5],
-    [ 5,-3, 3, 3, 3, 3,-3,-5],
-    [ 5,-3, 3, 3, 3, 3,-3,-5],
-    [ 5,-3, 3, 3, 3, 3,-3,-5],
-    [ 5,-3, 3, 3, 3, 3,-3,-5],
-    [-5,-5,-3,-3,-3,-3,-5,-5],
-    [10,-5, 5, 5, 5, 5,-5,10],
+    [10, -5, 8, 5, 5, 8, -5,10],
+    [-5,-10,-3,-3,-3,-3,-10,-5],
+    [ 8, -3, 6, 3, 3, 6, -3, 8],
+    [ 5, -3, 3, 3, 3, 3, -3, 5],
+    [ 5, -3, 3, 3, 3, 3, -3, 5],
+    [ 8, -3, 6, 3, 3, 6, -3, 8],
+    [-5,-10,-3,-3,-3,-3,-10,-5],
+    [10, -5, 8, 5, 5, 8, -5,10],
 ]
 
 boardArr = [
@@ -50,6 +46,11 @@ cpu = "white"
 turn = user
 cpuOn = True
 
+x = 0
+y = 0
+turnCount = 0
+depth = 4
+
 canvas = tk.Canvas(window, bg="green", height = 800, width=800)
 score = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
 victor = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
@@ -58,6 +59,7 @@ victor = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
 cpuBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"CPU: {cpuOn}") 
 colorBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"Player 1: {user}\tPlayer 2: {cpu}") 
 startBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = "Start Game") 
+resetBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = "Reset Game") 
 
 def toggleCPU():
     print("toggled CPU")
@@ -86,15 +88,15 @@ def drawBoard():
         canvas.create_line(i * 100, 0, i * 100, 800)
         canvas.create_line(0, i * 100, 800, i * 100)
 
+    #print("Board state:")
     for x in range(8):
         for y in range(8):
             if (boardArr[y][x] == 1):
                 placePiece(x, y, "black")
             elif (boardArr[y][x] == 2):
                 placePiece(x, y, "white")
-        print("Board state:")
-        print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
-    print()
+        #print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
+    #print()
 
     blackScore, whiteScore = getScore()
     score.config(text = f"Black: {blackScore}\t\tWhite: {whiteScore}")
@@ -123,14 +125,16 @@ def displayVictor():
         myText = "Black Wins!"
     elif (white > black):
         myText = "White Wins!"
-    else:
+    elif (white == black and white != 2):
         myText = "Tie!"
+    else:
+        myText = ""
 
-    victor.grid(row=1, column=1, columnspan=2, ipadx = 280, ipady = 15, sticky="S")
+    victor.grid(row=1, column=1, columnspan=3, ipadx = 185, ipady = 20, sticky="S")
     victor.config(text = myText)
 
 
-def checkPos(x, y, board):
+def checkPos(x, y, turn, board):
 
     valToCheck = 1
     currVal = 2
@@ -166,12 +170,14 @@ def checkPos(x, y, board):
     return False
 
 
-def flipPieces(x, y, board):
+def flipPieces(x, y, turn, board):
     valToCheck = 1
     currVal = 2
 
     if (turn == "black"):
         currVal, valToCheck = valToCheck, currVal
+
+    board[y][x] = currVal
 
     for xDir, yDir in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]:
         newX, newY = x, y
@@ -201,59 +207,94 @@ def flipPieces(x, y, board):
                 if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
                     break
                 #print(f"{newX},{newY}")
+    return board
 
 
-def validMoves(count, board):
+def showValid(valid):
+    for [x,y] in valid:
+        placePiece(x, y, "yellow")
+    window.update()
 
-    if (count >= 2):
-        displayVictor()
 
-    drawBoard()
-
-    global valid
-    global turn
+def validMoves(turn, board):
 
     valid = []
 
     for x in range(8):
         for y in range(8):
-            if (checkPos(x, y, board)):
-                placePiece(x, y, "yellow")
+            if (checkPos(x, y, turn, board)):
                 valid.append([x,y])
-    print(f"Valid moves: {valid}\n")
+    #print(f"Valid moves: {valid}\n")
 
-    if (turn == user and valid == [] and count < 2):
-        turn = cpu
-        cpuMove(count + 1, board)
-
-    elif (valid == [] and count < 2):
-        turn = "black"
-        validMoves(count + 1, board)
+    return valid
 
 
+def minimax(valid, depth, alpha, beta, turn, board):
 
-def cpuMove(count, board):
+    if (turn == user):
+        nextTurn = cpu
+    else:
+        nextTurn = user
+    
+    tempBoard = copy.deepcopy(board)
+    tempBoard = flipPieces(valid[0], valid[1], turn, tempBoard)
+    next = validMoves(nextTurn, tempBoard) 
+
+    if (depth == 0 or next == []) :
+        return boardHeur[valid[1]][valid[0]]
+
+    if (turn == user):
+        maxEval = -100
+        for [x,y] in next:
+            #tempBoard = flipPieces(x, y, board)
+            eval = minimax([x,y], depth - 1, alpha, beta, cpu, tempBoard)
+            maxEval = max(maxEval, eval)
+            alpha = max(alpha, eval)
+            if (beta <= alpha):
+                break
+        return maxEval
+
+    else:
+        minEval = 100
+        for [x,y] in next:
+            eval = minimax([x,y], depth - 1, alpha, beta, user, tempBoard)
+            minEval = min(minEval, eval)
+            beta = min(beta, eval)
+            if (beta <= alpha):
+                break
+        return minEval
+
+
+def cpuMove(board):
     global turn
+    global turnCount
+    maxHeur = -11
     x = -1
     y = -1
-    maxHeur = -11
+    tempBoard = copy.deepcopy(board)
+    valid = validMoves(turn, tempBoard)
 
-    validMoves(count, board)
+    if (turnCount >= 2):
+        displayVictor()
 
     for [tempx,tempy] in valid:
-        if (boardHeur[tempy][tempx] > maxHeur):
+        tempVal = minimax([tempx, tempy], depth, -11, 11, cpu, tempBoard)
+        if (tempVal > maxHeur):
+            maxHeur = tempVal
             x = tempx
             y = tempy
-            maxHeur = boardHeur[tempy][tempx]
+    
 
     if (x != -1 or y != -1):
-        if (cpu == "black"):
-            boardArr[y][x] = 1
-        else:
-            boardArr[y][x] = 2
         print(f"CPU placed at: {x}, {y}\n")
-        flipPieces(x,y, board)
+        flipPieces(x, y, turn, board)
+    elif (turnCount < 2):
+        turnCount += 1
+    else:
+        displayVictor()
+
     turn = user
+    showValid(valid)
 
 
 def mouseXY(event):
@@ -262,47 +303,76 @@ def mouseXY(event):
     global turn
     x, y = math.floor(event.x / 100), math.floor(event.y / 100)
 
+    valid = validMoves(turn, boardArr)
+
+    if (valid == [] and turnCount <= 2):
+        displayVictor()
+
     if (turn == user and [x,y] in valid):
-        flipPieces(x,y, boardArr)
+        flipPieces(x,y, turn, boardArr)
         turn = cpu
-        if (user == "black"):
-            boardArr[y][x] = 1
-        else:
-            boardArr[y][x] = 2
 
     elif (not(cpuOn) and turn == cpu and [x,y] in valid):
-        flipPieces(x,y, boardArr)
+        flipPieces(x,y, turn, boardArr)
         turn = user
-        if (cpu == "black"):
-            boardArr[y][x] = 1
-        else:
-            boardArr[y][x] = 2
     
     print(f"User placed at: {x}, {y}")
     print()
 
-    if (cpuOn and turn == cpu):
-        cpuMove(0, boardArr)
+    
+    drawBoard()
 
-    validMoves(0, boardArr)
+    if (cpuOn and turn == cpu):
+        cpuMove(boardArr)
+        sleep(0.5)
+        drawBoard()
+
+    showValid(validMoves(turn, boardArr))
+
+
 
 
 def startGame():
     colorBtn.config(state="disabled")
-    validMoves(0, boardArr)
+    showValid(validMoves(turn, boardArr))
     window.bind("<Button-1>", mouseXY)
+
+def resetGame():
+    global boardArr
+    global turn
+
+    turn = user
+    boardArr = [
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,2,0,0,0],
+        [0,0,0,2,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+    ]
+
+    drawBoard()
+    victor.config(text="")
+    victor.grid(row=1, column=1, columnspan=3, ipadx = 260, ipady = 20, sticky="S")
+    colorBtn.config(state="active")
+    window.unbind("<Button-1>")
 
 
 
 canvas.grid(row=0, column=0, rowspan=8)
-score.grid(row=0, column=1, columnspan=2, ipadx = 195, ipady = 18, sticky="N")
-cpuBtn.grid(row=0, column=1, ipadx = 20, ipady = 15, sticky= "SW")
-colorBtn.grid(row=0, column=2, ipadx = 50, ipady = 15, sticky= "SE")
-startBtn.grid(row=1, column=1, columnspan=2, ipadx = 280, ipady = 15, sticky="N")
-victor.grid(row=1, column=1, columnspan=2, ipadx = 355, ipady = 20, sticky="S")
+score.grid(row=0, column=1, columnspan=3, ipadx = 96, ipady = 18, sticky="N")
+colorBtn.grid(row=0, column=1, columnspan=3, ipadx = 50, ipady = 15, sticky= "S")
+cpuBtn.grid(row=1, column=1, ipadx = 10, ipady = 15, sticky= "N")
+startBtn.grid(row=1, column=2, ipadx = 10, ipady = 15, sticky="N")
+resetBtn.grid(row=1, column=3, ipadx = 10, ipady = 15, sticky="N")
+victor.grid(row=1, column=1, columnspan=3, ipadx = 260, ipady = 20, sticky="S")
+
 cpuBtn.config(command=toggleCPU)
 colorBtn.config(command=toggleColor)
 startBtn.config(command=startGame)
+resetBtn.config(command=resetGame)
 
 drawBoard()
 
