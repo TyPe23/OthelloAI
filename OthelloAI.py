@@ -20,14 +20,14 @@ import copy
 window = tk.Tk()
 
 boardHeur = [
-    [10, -5, 8, 5, 5, 8, -5,10],
-    [-5,-10,-3,-3,-3,-3,-10,-5],
-    [ 8, -3, 6, 3, 3, 6, -3, 8],
-    [ 5, -3, 3, 3, 3, 3, -3, 5],
-    [ 5, -3, 3, 3, 3, 3, -3, 5],
-    [ 8, -3, 6, 3, 3, 6, -3, 8],
-    [-5,-10,-3,-3,-3,-3,-10,-5],
-    [10, -5, 8, 5, 5, 8, -5,10],
+    [100, -10, 10, 5, 5, 10, -10,100],
+    [-10, -20, -3,-3,-3, -3, -20,-10],
+    [ 10,  -3,  6, 3, 3,  6,  -3, 10],
+    [ 5,   -3,  3, 3, 3,  3,  -3,  5],
+    [ 5,   -3,  3, 3, 3,  3,  -3,  5],
+    [ 10,  -3,  6, 3, 3,  6,  -3, 10],
+    [-10, -20, -3,-3,-3, -3, -20,-10],
+    [100, -10, 10, 5, 5, 10, -10,100],
 ]
 
 boardArr = [
@@ -98,16 +98,16 @@ def drawBoard():
         print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
     print()
 
-    blackScore, whiteScore = getScore()
+    blackScore, whiteScore = getScore(boardArr)
     score.config(text = f"Black: {blackScore}\t\tWhite: {whiteScore}")
 
 
-def getScore():
+def getScore(board):
     blackScore = 0
     whiteScore = 0
     for x in range(8):
         for y in range(8):
-            match boardArr[y][x]:
+            match board[y][x]:
                 case 0:
                     continue
                 case 1:
@@ -120,7 +120,7 @@ def getScore():
     
 
 def displayVictor():
-    black, white = getScore()
+    black, white = getScore(boardArr)
     if (black > white):
         myText = "Black Wins!"
     elif (white > black):
@@ -230,6 +230,14 @@ def validMoves(turn, board):
     return valid
 
 
+def getHeur(x, y, turn, board):
+    blackScore, whiteScore = getScore(board)
+    if (turn == "black"):
+        return boardHeur[y][x] * (blackScore - whiteScore) / (blackScore + whiteScore)
+    else:
+        return boardHeur[y][x] * (whiteScore - blackScore) / (blackScore + whiteScore)
+
+
 def minimax(valid, depth, alpha, beta, turn, board):
 
     if (turn == user):
@@ -242,13 +250,13 @@ def minimax(valid, depth, alpha, beta, turn, board):
     next = validMoves(nextTurn, tempBoard) 
 
     if (depth == 0 or next == []) :
-        return boardHeur[valid[1]][valid[0]]
+        return getHeur(valid[0], valid[1], turn, board)
 
     if (turn == user):
-        maxEval = -100
+        maxEval = -100000
         for [x,y] in next:
             #tempBoard = flipPieces(x, y, board)
-            eval = minimax([x,y], depth - 1, alpha, beta, cpu, tempBoard)
+            eval = minimax([x,y], depth - 1, alpha, beta, nextTurn, tempBoard)
             maxEval = max(maxEval, eval)
             alpha = max(alpha, eval)
             if (beta <= alpha):
@@ -256,9 +264,9 @@ def minimax(valid, depth, alpha, beta, turn, board):
         return maxEval
 
     else:
-        minEval = 100
+        minEval = 100000
         for [x,y] in next:
-            eval = minimax([x,y], depth - 1, alpha, beta, user, tempBoard)
+            eval = minimax([x,y], depth - 1, alpha, beta, nextTurn, tempBoard)
             minEval = min(minEval, eval)
             beta = min(beta, eval)
             if (beta <= alpha):
@@ -269,11 +277,12 @@ def minimax(valid, depth, alpha, beta, turn, board):
 def cpuMove(board):
     global turn
     global turnCount
-    maxHeur = -11
+    maxHeur = -10000000000
     x = -1
     y = -1
     tempBoard = copy.deepcopy(board)
     valid = validMoves(turn, tempBoard)
+    showValid(valid)
 
     if (turnCount >= 2):
         displayVictor()
@@ -303,6 +312,7 @@ def mouseXY(event):
     global x
     global y
     global turn
+    global turnCount
     x, y = math.floor(event.x / 100), math.floor(event.y / 100)
 
     valid = validMoves(turn, boardArr)
