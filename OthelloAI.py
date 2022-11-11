@@ -49,7 +49,7 @@ cpuOn = True
 x = 0
 y = 0
 turnCount = 0
-depth = 4
+depth = 3
 
 canvas = tk.Canvas(window, bg="green", height = 800, width=800)
 score = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
