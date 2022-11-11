@@ -88,15 +88,15 @@ def drawBoard():
         canvas.create_line(i * 100, 0, i * 100, 800)
         canvas.create_line(0, i * 100, 800, i * 100)
 
-    #print("Board state:")
+    print("Board state:")
     for x in range(8):
         for y in range(8):
             if (boardArr[y][x] == 1):
                 placePiece(x, y, "black")
             elif (boardArr[y][x] == 2):
                 placePiece(x, y, "white")
-        #print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
-    #print()
+        print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
+    print()
 
     blackScore, whiteScore = getScore()
     score.config(text = f"Black: {blackScore}\t\tWhite: {whiteScore}")
@@ -212,7 +212,8 @@ def flipPieces(x, y, turn, board):
 
 def showValid(valid):
     for [x,y] in valid:
-        placePiece(x, y, "yellow")
+        placePiece(x, y, turn)
+        canvas.create_oval(x * 100 + 20, y * 100 + 20, x * 100 + 80, y * 100 + 80, fill="green")
     window.update()
 
 
@@ -286,6 +287,7 @@ def cpuMove(board):
     
 
     if (x != -1 or y != -1):
+        turnCount = 0
         print(f"CPU placed at: {x}, {y}\n")
         flipPieces(x, y, turn, board)
     elif (turnCount < 2):
@@ -305,14 +307,16 @@ def mouseXY(event):
 
     valid = validMoves(turn, boardArr)
 
-    if (valid == [] and turnCount <= 2):
+    if (valid == [] and turnCount >= 2):
         displayVictor()
 
     if (turn == user and [x,y] in valid):
+        turnCount = 0
         flipPieces(x,y, turn, boardArr)
         turn = cpu
 
     elif (not(cpuOn) and turn == cpu and [x,y] in valid):
+        turnCount = 0
         flipPieces(x,y, turn, boardArr)
         turn = user
     
