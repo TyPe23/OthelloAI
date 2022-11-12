@@ -262,7 +262,7 @@ def getHeur(xpos, ypos, board):
     corners = (userCorners - cpuCorners)
 
     BH = boardHeur[ypos][xpos]
-    heuristic = score + BH * 10 + corners * 10000 
+    heuristic = round(score + BH * 10 + corners * 10000 )
     return heuristic
 
 
@@ -278,7 +278,9 @@ def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
     next = validMoves(nextTurn, tempBoard) 
 
     if (depth == 0 or next == []) :
-        return getHeur(xpos, ypos, tempBoard)
+        heur = getHeur(xpos, ypos, tempBoard)
+        stem.name = f"[{xpos},{ypos}] : {heur}"
+        return heur
 
     if (maximizingPlayer):
         maxEval = -100000
@@ -351,6 +353,7 @@ def cpuMove(board):
             print("%s%s" % (pre, node.name))
     
     if (debug and heuristics):
+        showValid(valid)
         print(f"Heuristics per position: {moveHeur}")
         print()
 
@@ -498,7 +501,7 @@ def toggleDepth():
 
     depth += 1
 
-    if (depth >= 6):
+    if (depth >= 11):
         depth = 1
 
     if (debug):
