@@ -12,9 +12,12 @@ Othello game that can be played against either another person
 or against an AI which uses mini-max with alpha-beta pruning
 """
 
+# try to import a library called anytree that is used to diplay a tree of all the possible moves
+# to use this library use "pip install anytree" in powershell or terminal
 try:
     from anytree import Node, RenderTree
     AT = True
+# if unable to import anytree then create fake methods and print an error message
 except:
     AT = False
     def Node(name, parent=None):
@@ -28,19 +31,22 @@ import math
 from time import sleep
 import copy
 
+# window using tkinter to be drawn to
 window = tk.Tk()
 
+# board with heuristic values for each position
 boardHeur = [
-            [200, -3, 11, 8, 8, 11, -3, 200],
-            [-3, -7, -4, 1, 1, -4, -7, -3],
-            [11, -4,  2, 2, 2,  2, -4, 11],
-            [ 8,  1,  2,-3,-3,  2,  1,  8],
-            [ 8,  1,  2,-3,-3,  2,  1,  8],
-            [11, -4,  2, 2, 2,  2, -4, 11],
-            [-3, -7, -4, 1, 1, -4, -7, -3],
-            [200, -3, 11, 8, 8, 11, -3, 200]
+            [20, -10, 11, 8, 8, 11, -10, 20],
+            [-10,-15, -4, 1, 1, -4, -15,-10],
+            [11, -4,   2, 2, 2,  2,  -4, 11],
+            [ 8,  1,   2,-3,-3,  2,   1,  8],
+            [ 8,  1,   2,-3,-3,  2,   1,  8],
+            [11, -4,   2, 2, 2,  2,  -4, 11],
+            [-10,-15, -4, 1, 1, -4, -15,-10],
+            [20, -10, 11, 8, 8, 11, -10, 20]
         ]
 
+# starting arrangement for the board
 boardArr = [
     [0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0],
@@ -52,6 +58,7 @@ boardArr = [
     [0,0,0,0,0,0,0,0],
 ]
 
+#global variables used throughout program
 user = "black"
 cpu = "white"
 globalTurn = user
@@ -61,13 +68,16 @@ debug = False
 heuristics = True
 tree = False
 boardDisp = True
+userSkip = False
+cpuSkip = False
 
 x = 0
 y = 0
-turnCount = 0
 depth = 3
 numStates = 0
 
+
+# creates each item to be drawn by tkinter
 canvas = tk.Canvas(window, bg="green", height = 800, width=800)
 
 score = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
@@ -90,9 +100,11 @@ depthBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", tex
 victor = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
 
 
+# places pieces on the board
 def placePiece(x, y, color):
     canvas.create_oval(x * 100 + 10, y * 100 + 10, x * 100 + 90, y * 100 + 90, fill=color)
 
+# gets the score by counting the values of each position and incrementing each side's score
 def getScore(board):
     blackScore = 0
     whiteScore = 0
@@ -109,32 +121,41 @@ def getScore(board):
                     continue
     return blackScore, whiteScore
 
-
+# draws the board at the beginning of the game and after each turn to cover the valid moves not used
 def drawBoard():
+    # creates the board
     canvas.create_rectangle(0, 0, 800, 800, fill = "green")
 
+    # creates the lines on the board
     for i in range(1, 8):
         canvas.create_line(i * 100, 0, i * 100, 800)
         canvas.create_line(0, i * 100, 800, i * 100)
 
+    # debug if board is true
     if (debug and boardDisp):
         print("Board state:")
+
+    # creates each piece on the board
     for x in range(8):
         for y in range(8):
             if (boardArr[y][x] == 1):
                 placePiece(x, y, "black")
             elif (boardArr[y][x] == 2):
                 placePiece(x, y, "white")
+        
+        # one row of the debug board display
         if (debug and boardDisp):
             print(f"{boardArr[x][0]},{boardArr[x][1]},{boardArr[x][2]},{boardArr[x][3]},{boardArr[x][4]},{boardArr[x][5]},{boardArr[x][6]},{boardArr[x][7]}")
+    # just an extra line after the board has been displayed
     if (debug and boardDisp):
         print()
 
+    # updates the scoreboard
     blackScore, whiteScore = getScore(boardArr)
     score.config(text = f"Black: {blackScore}\t\tWhite: {whiteScore}")
     
 
-
+# checks the validity of the position
 def checkPos(x, y, turn, board):
 
     valToCheck = 1
@@ -144,33 +165,41 @@ def checkPos(x, y, turn, board):
         currVal, valToCheck = valToCheck, currVal
 
     
-
+    # if the spot is taken the position is invalid
     if (board[y][x] != 0):
         return False
 
+    # checks in each of the 8 directions outward from the position
     for xDir, yDir in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]:
         newX, newY = x, y
         newX += xDir
         newY += yDir
         
+        # continues to the next direction if the direction being checked leaves the board
         if (newX > 7 or newX < 0 or newY > 7 or newY < 0 or board[newY][newX] == currVal):
             continue
 
+        # continues to check the direction if the opposite color piece is found
         while (board[newY][newX] == valToCheck):
             newX += xDir
             newY += yDir
 
+            # breaks from the while loop if the direction being checked leaves the board
             if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
                 newX -= xDir
                 newY -= yDir
                 break
 
+        # if the direction being checked has a line of the opposite color and ends on the same color 
+        # it is a valid position and the other directions do not need to be checked
         if (board[newY][newX] == currVal):
             return True
 
+    # return false if no direction is valid
     return False
 
 
+# operates very similarly to checkPos but flips peices in the valid directions
 def flipPieces(x, y, turn, board):
     valToCheck = 1
     currVal = 2
@@ -180,32 +209,42 @@ def flipPieces(x, y, turn, board):
 
     board[y][x] = currVal
 
+    # checks in each of the 8 directions outward from the position
     for xDir, yDir in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]:
         newX, newY = x, y
         newX += xDir
         newY += yDir
         
+        # continues to the next direction if the direction being checked leaves the board
         if (newX > 7 or newX < 0 or newY > 7 or newY < 0 or board[newY][newX] == currVal):
             continue
         
+        # continues to check the direction if the opposite color piece is found
         while (board[newY][newX] == valToCheck):
             newX += xDir
             newY += yDir
 
+            # breaks from the while loop if the direction being checked leaves the board
             if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
                 newX -= xDir
                 newY -= yDir
                 break
 
+        # if the direction being checked has a line of the opposite color and ends on the same color 
+        # the direction is valid begin back tracking while flipping colors by updating the values of the board
         if (board[newY][newX] == currVal):
             newX -= xDir
             newY -= yDir
+
+            # begin back tracking while flipping colors by updating the values of the board
             while (board[newY][newX] == valToCheck):
                 board[newY][newX] = currVal
                 newX -= xDir
                 newY -= yDir
-                if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
-                    break
+
+
+                """ if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
+                    break """
     return board
 
 
@@ -232,42 +271,23 @@ def validMoves(turn, board):
     return valid
 
 
-def getHeur(xpos, ypos, board):
+def getHeur(xpos, ypos, board, max):
     if (user == "black"):
-        p1 = 1
-        p2 = 2
         blackScore, whiteScore = getScore(board)
     else:
-        p1 = 2
-        p2 = 1
         whiteScore, blackScore = getScore(board)
 
-    #difference between scores
-    if (whiteScore > blackScore):
-        score = (100 * whiteScore) / (whiteScore + blackScore)
-    elif (whiteScore < blackScore):
-        score = -(100 * blackScore) / (whiteScore + blackScore)
-    else:
-        score = 0
-    
+    total = 0
+    for x in range(8):
+        for y in range(8):
+            total += boardHeur[y][x]
 
-    #corners occupied
-    userCorners = 0
-    cpuCorners = 0
-    for x, y in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]:
-        if (board[y][x] == p1):
-            userCorners += 1
-        elif (board[y][x] == p2):
-            cpuCorners += 1
+    heuristic = whiteScore + total + boardHeur[ypos][xpos]
 
-    corners = (userCorners - cpuCorners)
-
-    BH = boardHeur[ypos][xpos]
-    heuristic = round(score + BH * 10 + corners * 10000 )
     return heuristic
 
 
-def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
+def minimax(startx, starty, xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
 
     global numStates
 
@@ -281,8 +301,8 @@ def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
     next = validMoves(nextTurn, tempBoard) 
 
     if (depth == 0 or next == []) :
-        heur = getHeur(xpos, ypos, tempBoard)
-        if (tree):
+        heur = getHeur(startx, starty, tempBoard, maximizingPlayer)
+        if (tree and AT):
             stem.name = f"[{xpos},{ypos}] : {heur}"
         else:
             numStates += 1
@@ -291,36 +311,36 @@ def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
     if (maximizingPlayer):
         maxEval = -100000
         for [x,y] in next:
-            if (tree):
+            if (tree and AT):
                 tile = Node(f"[{x},{y}]", parent=stem)
-                eval = minimax(x, y, depth - 1, alpha, beta, False, tempBoard, tile)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, False, tempBoard, tile)
             else:
                 numStates += 1
-                eval = minimax(x, y, depth - 1, alpha, beta, False, tempBoard, stem)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, False, tempBoard, stem)
             maxEval = max(maxEval, eval)
             if (alphaBeta):
                 alpha = max(alpha, eval)
                 if (beta <= alpha):
                     break
-            if (tree):    
+            if (tree and AT):    
                 tile.name = f"[{x},{y}] : {maxEval}"
         return maxEval
 
     else:
         minEval = 100000
         for [x,y] in next:
-            if (tree):
+            if (tree and AT):
                 tile = Node(f"[{x},{y}]", parent=stem)
-                eval = minimax(x, y, depth - 1, alpha, beta, True, tempBoard, tile)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, True, tempBoard, tile)
             else:
                 numStates += 1
-                eval = minimax(x, y, depth - 1, alpha, beta, True, tempBoard, stem)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, True, tempBoard, stem)
             minEval = min(minEval, eval)
             beta = min(beta, eval)
             if (alphaBeta):
                 if (beta <= alpha):
                     break
-            if (tree):    
+            if (tree and AT):    
                 tile.name = f"[{x},{y}] : {minEval}"
         return minEval
 
@@ -342,7 +362,6 @@ def displayVictor():
 
 def cpuMove(board):
     global globalTurn
-    global turnCount
     global numStates
 
     maxHeur = -10000000000
@@ -354,10 +373,6 @@ def cpuMove(board):
     valid = validMoves(globalTurn, tempBoard)
     showValid(valid)
 
-    if (turnCount >= 1):
-        displayVictor()
-
-
     moveHeur = []
     if (tree):
         root = Node("root")
@@ -367,7 +382,7 @@ def cpuMove(board):
     for [tempx,tempy] in valid:
         if (tree):
             node = Node([tempx,tempy], parent=root)
-        tempVal = minimax(tempx, tempy, depth - 1, -100000, 100000, False, tempBoard, node)
+        tempVal = minimax(tempx, tempy, tempx, tempy, depth - 1, -100000, 100000, False, tempBoard, node)
         moveHeur.append(tempVal)
         if (tempVal > maxHeur):
             maxHeur = tempVal
@@ -387,15 +402,9 @@ def cpuMove(board):
         print(f"Number of States Searched: {numStates}\n")
 
     if (x != -1 or y != -1):
-        turnCount = 0
         if (debug and boardDisp):
             print(f"CPU placed at: {x}, {y}\n")
         flipPieces(x, y, globalTurn, board)
-
-    elif (turnCount < 1):
-        turnCount += 1
-    else:
-        displayVictor()
 
     globalTurn = user
 
@@ -404,29 +413,29 @@ def mouseXY(event):
     global x
     global y
     global globalTurn
-    global turnCount
+    global userSkip
+    global cpuSkip
+
     x, y = math.floor(event.x / 100), math.floor(event.y / 100)
 
     valid = validMoves(globalTurn, boardArr)
 
-    if (valid == [] and turnCount >= 1):
-        displayVictor()
-
     if (globalTurn == user and [x,y] in valid):
-        turnCount = 0
+        userSkip = False
         flipPieces(x,y, globalTurn, boardArr)
         globalTurn = cpu
 
     elif (not(cpuOn) and globalTurn == cpu and [x,y] in valid):
-        turnCount = 0
+        cpuSkip = False
         flipPieces(x,y, globalTurn, boardArr)
         globalTurn = user
-    elif (globalTurn == cpu and valid == []):
-        turnCount += 1
-        globalTurn = user
+
     elif (globalTurn == user and valid == []):
-        turnCount += 1
         globalTurn = cpu
+
+    elif (not(cpuOn) and globalTurn == cpu and valid == []):
+        globalTurn = user
+
     
     if (debug and boardDisp):
         print(f"User placed at: {x}, {y}\n")
@@ -435,11 +444,17 @@ def mouseXY(event):
     drawBoard()
 
     if (cpuOn and globalTurn == cpu):
+        cpuSkip = False
         cpuMove(boardArr)
         sleep(0.5)
         drawBoard()
 
+    if (validMoves(user, boardArr) == [] and validMoves(cpu, boardArr) == []):
+        displayVictor()
+
     showValid(validMoves(globalTurn, boardArr))
+
+
 
 
 
@@ -540,6 +555,8 @@ def toggleDepth():
         print(f"Depth changed to {depth}")
 
     depthBtn.config(text=f"Depth: {depth}")
+
+
 
 
 canvas.grid(row=0, column=0, rowspan=8)
