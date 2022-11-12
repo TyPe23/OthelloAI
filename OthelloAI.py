@@ -66,6 +66,7 @@ x = 0
 y = 0
 turnCount = 0
 depth = 3
+numStates = 0
 
 canvas = tk.Canvas(window, bg="green", height = 800, width=800)
 
@@ -268,6 +269,8 @@ def getHeur(xpos, ypos, board):
 
 def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
 
+    global numStates
+
     if (maximizingPlayer):
         nextTurn = user
     else:
@@ -279,33 +282,46 @@ def minimax(xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
 
     if (depth == 0 or next == []) :
         heur = getHeur(xpos, ypos, tempBoard)
-        stem.name = f"[{xpos},{ypos}] : {heur}"
+        if (tree):
+            stem.name = f"[{xpos},{ypos}] : {heur}"
+        else:
+            numStates += 1
         return heur
 
     if (maximizingPlayer):
         maxEval = -100000
         for [x,y] in next:
-            tile = Node(f"[{x},{y}]", parent=stem)
-            eval = minimax(x, y, depth - 1, alpha, beta, False, tempBoard, tile)
+            if (tree):
+                tile = Node(f"[{x},{y}]", parent=stem)
+                eval = minimax(x, y, depth - 1, alpha, beta, False, tempBoard, tile)
+            else:
+                numStates += 1
+                eval = minimax(x, y, depth - 1, alpha, beta, False, tempBoard, stem)
             maxEval = max(maxEval, eval)
             if (alphaBeta):
                 alpha = max(alpha, eval)
                 if (beta <= alpha):
                     break
-            tile.name = f"[{x},{y}] : {maxEval}"
+            if (tree):    
+                tile.name = f"[{x},{y}] : {maxEval}"
         return maxEval
 
     else:
         minEval = 100000
         for [x,y] in next:
-            tile = Node(f"[{x},{y}]", parent=stem)
-            eval = minimax(x, y, depth - 1, alpha, beta, True, tempBoard, tile)
+            if (tree):
+                tile = Node(f"[{x},{y}]", parent=stem)
+                eval = minimax(x, y, depth - 1, alpha, beta, True, tempBoard, tile)
+            else:
+                numStates += 1
+                eval = minimax(x, y, depth - 1, alpha, beta, True, tempBoard, stem)
             minEval = min(minEval, eval)
             beta = min(beta, eval)
             if (alphaBeta):
                 if (beta <= alpha):
                     break
-            tile.name = f"[{x},{y}] : {minEval}"
+            if (tree):    
+                tile.name = f"[{x},{y}] : {minEval}"
         return minEval
 
 
@@ -327,9 +343,13 @@ def displayVictor():
 def cpuMove(board):
     global globalTurn
     global turnCount
+    global numStates
+
     maxHeur = -10000000000
     x = -1
     y = -1
+    numStates = 0
+
     tempBoard = copy.deepcopy(board)
     valid = validMoves(globalTurn, tempBoard)
     showValid(valid)
@@ -337,11 +357,17 @@ def cpuMove(board):
     if (turnCount >= 1):
         displayVictor()
 
+
     moveHeur = []
-    root = Node("root")
+    if (tree):
+        root = Node("root")
+    else:
+        node = 0
 
     for [tempx,tempy] in valid:
-        tempVal = minimax(tempx, tempy, depth, -100000, 100000000, False, tempBoard, root)
+        if (tree):
+            node = Node([tempx,tempy], parent=root)
+        tempVal = minimax(tempx, tempy, depth - 1, -100000, 100000, False, tempBoard, node)
         moveHeur.append(tempVal)
         if (tempVal > maxHeur):
             maxHeur = tempVal
@@ -351,11 +377,14 @@ def cpuMove(board):
     if (debug and tree and AT):
         for pre, fill, node in RenderTree(root):
             print("%s%s" % (pre, node.name))
+            numStates +=1
+        numStates -= 1
+        print()
     
     if (debug and heuristics):
         showValid(valid)
-        print(f"Heuristics per position: {moveHeur}")
-        print()
+        print(f"Heuristics per position: {moveHeur}\n")
+        print(f"Number of States Searched: {numStates}\n")
 
     if (x != -1 or y != -1):
         turnCount = 0
@@ -503,6 +532,9 @@ def toggleDepth():
 
     if (depth >= 11):
         depth = 1
+
+    if (depth >= 5 and tree == True):
+        toggleTree()
 
     if (debug):
         print(f"Depth changed to {depth}")
