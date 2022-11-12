@@ -14,7 +14,6 @@ or against an AI which uses mini-max with alpha-beta pruning
 
 try:
     from anytree import Node, RenderTree
-    asdf()
     AT = True
 except:
     AT = False
