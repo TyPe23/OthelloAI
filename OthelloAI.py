@@ -59,16 +59,14 @@ boardArr = [
 
 #global variables used throughout program
 user = "black"
-cpu = "white"
+AI = "white"
 globalTurn = user
-cpuOn = True
+AIOn = True
 alphaBeta = True
 debug = False
 heuristics = True
 tree = False
 boardDisp = True
-userSkip = False
-cpuSkip = False
 
 x = 0
 y = 0
@@ -81,9 +79,9 @@ canvas = tk.Canvas(window, bg="green", height = 800, width=800)
 
 score = tk.Label(window,  relief="raised",  font="Times 20 italic bold")
 
-colorBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"Player 1: {user}\tPlayer 2: {cpu}") 
+colorBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"Player 1: {user}\tPlayer 2: {AI}") 
 
-cpuBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"CPU: {cpuOn}") 
+AIBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = f"AI: {AIOn}") 
 startBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = "Start Game") 
 resetBtn = tk.Button(window,  relief="raised",  font="Times 20 italic bold", text = "Reset Game") 
 
@@ -255,7 +253,7 @@ def showValid(valid):
     if (debug and boardDisp):
         print(f"Valid {globalTurn} moves: {valid}\n")
 
-    # force the window to update now instead of later, this is mostly used to ensure the cpu's moves are displayed
+    # force the window to update now instead of later, this is mostly used to ensure the AI's moves are displayed
     window.update()
 
 
@@ -275,7 +273,7 @@ def validMoves(turn, board):
 
 # heuristic function used for minimax
 def getHeur(x, y, board):
-    # grabs the score but only the cpu's score is needed so the color of the player is checked
+    # grabs the score but only the AI's score is needed so the color of the player is checked
     if (user == "black"):
         blackScore, whiteScore = getScore(board)
     else:
@@ -292,7 +290,7 @@ def minimax(startx, starty, xpos, ypos, depth, alpha, beta, maximizingPlayer, bo
     if (maximizingPlayer):
         nextTurn = user
     else:
-        nextTurn = cpu
+        nextTurn = AI
     
     # create a deep copy of the board before flippling pieces because original board would have pieces flipped as well
     tempBoard = copy.deepcopy(board)
@@ -421,36 +419,60 @@ def displayVictor():
     victor.config(text = myText)
 
 
-# function that controls the cpu
-def cpuMove(board):
+# function that controls the AI
+def AIMove(board):
     global globalTurn
     global numStates
 
-    maxHeur = -10000000000
+
+    maxHeur = -10000
     x = -1
     y = -1
     numStates = 0
 
+    # another deep copy of the board used for passing to minimax
     tempBoard = copy.deepcopy(board)
     valid = validMoves(globalTurn, tempBoard)
     showValid(valid)
 
+
     moveHeur = []
+
+    # if displaying the tree create a root node for minimax
     if (tree):
         root = Node("root")
+    # if not just give it a throw away variable
     else:
         node = 0
 
+    # iterates through each valid move
     for [tempx,tempy] in valid:
+
+        # if displaying tree create a node for each valid move
         if (tree):
             node = Node([tempx,tempy], parent=root)
+
+        # get heuristic for each valid move
         tempVal = minimax(tempx, tempy, tempx, tempy, depth - 1, -100000, 100000, False, tempBoard, node)
+
+        # if displaying tree set node name to reflect heuristic
+        if (tree):
+            node.name = f"[{tempx}, {tempy}]: {tempVal}"
+
+        
         moveHeur.append(tempVal)
+
+        # replace max heuristic if larger one is found
         if (tempVal > maxHeur):
             maxHeur = tempVal
             x = tempx
             y = tempy
 
+        # if displaying tree set root name to reflect max heuristic
+        if (tree):
+            root.name = f"[{x}, {y}]: {maxHeur}"
+
+    # displays tree
     if (debug and tree and AT):
         for pre, fill, node in RenderTree(root):
             print("%s%s" % (pre, node.name))
@@ -458,73 +480,77 @@ def cpuMove(board):
         numStates -= 1
         print()
     
+    # displays valid moves, heuristics per move and number of moves searched
     if (debug and heuristics):
         showValid(valid)
         print(f"Heuristics per position: {moveHeur}\n")
         print(f"Number of States Searched: {numStates}\n")
 
+    # if a valid move was found place the piece and flip other pieces
     if (x != -1 or y != -1):
-        if (debug and boardDisp):
-            print(f"CPU placed at: {x}, {y}\n")
         flipPieces(x, y, globalTurn, board)
 
+        # diplays where the piece was placed
+        if (debug and boardDisp):
+            print(f"AI placed at: {x}, {y}\n")
+
+    # switch the turn to user
     globalTurn = user
 
 
+# function that handles mouse click event
 def mouseXY(event):
     global x
     global y
     global globalTurn
-    global userSkip
-    global cpuSkip
 
+    # takes the mouse position and turns it into integers
     x, y = math.floor(event.x / 100), math.floor(event.y / 100)
 
+    # find the valid moves
     valid = validMoves(globalTurn, boardArr)
 
+    # if user mouse is over a valid position place the piece and switch turns
     if (globalTurn == user and [x,y] in valid):
-        userSkip = False
         flipPieces(x,y, globalTurn, boardArr)
-        globalTurn = cpu
+        globalTurn = AI
 
-    elif (not(cpuOn) and globalTurn == cpu and [x,y] in valid):
-        cpuSkip = False
+        # displays where player 1 placed piece
+        if (debug and boardDisp):
+            print(f"Player 1 placed at: {x}, {y}\n")
+
+    # if AI mouse is over a valid position place the piece and switch turns (only works if AI is not playing)
+    elif (not(AIOn) and globalTurn == AI and [x,y] in valid):
         flipPieces(x,y, globalTurn, boardArr)
         globalTurn = user
 
-    elif (globalTurn == user and valid == []):
-        globalTurn = cpu
-
-    elif (not(cpuOn) and globalTurn == cpu and valid == []):
-        globalTurn = user
-
-    
-    if (debug and boardDisp):
-        print(f"User placed at: {x}, {y}\n")
+        # displays where player 2 placed piece
+        if (debug and boardDisp):
+            print(f"Player 2 placed at: {x}, {y}\n")
 
     
     drawBoard()
 
-    if (cpuOn and globalTurn == cpu):
-        cpuSkip = False
-        cpuMove(boardArr)
+    # calls AI function to play after user takes turn
+    if (AIOn and globalTurn == AI):
+        AIMove(boardArr)
         drawBoard()
 
-    if (validMoves(user, boardArr) == [] and validMoves(cpu, boardArr) == []):
+    # displays victor if no players have a valid move to make
+    if (validMoves(user, boardArr) == [] and validMoves(AI, boardArr) == []):
         displayVictor()
 
     showValid(validMoves(globalTurn, boardArr))
 
 
 
-
-
-
+# function that starts the game
 def startGame():
     colorBtn.config(state="disabled")
     showValid(validMoves(globalTurn, boardArr))
     window.bind("<Button-1>", mouseXY)
 
+# function that resets the game
 def resetGame():
     global boardArr
     global globalTurn
@@ -547,7 +573,7 @@ def resetGame():
     window.unbind("<Button-1>")
     drawBoard()
 
-
+# function that toggles alpha-beta pruning
 def toggleAB():
     if (debug):
         print("Toggled AB")
@@ -555,31 +581,33 @@ def toggleAB():
     alphaBeta = not(alphaBeta)
     ABBtn.config(text=f"Alpha-Beta Pruning: {alphaBeta}")
 
-
-def toggleCPU():
+# function that toggles AI
+def toggleAI():
     if (debug):
-        print("toggled CPU")
-    global cpuOn
-    cpuOn = not(cpuOn)
-    cpuBtn.config(text = f"CPU: {cpuOn}")
+        print("toggled AI")
+    global AIOn
+    AIOn = not(AIOn)
+    AIBtn.config(text = f"AI: {AIOn}")
 
-
+# function that switches the players colors
 def toggleColor():
     if (debug):
         print("toggled color")
     global user
-    global cpu
+    global AI
     global globalTurn
-    user, cpu = cpu, user
+    user, AI = AI, user
     globalTurn = user
-    colorBtn.config(text = f"Player 1: {user}\tPlayer 2: {cpu}")
+    colorBtn.config(text = f"Player 1: {user}\tPlayer 2: {AI}")
 
+# function that toggles debug
 def toggleDebug():
     print("toggled debug")
     global debug
     debug = not(debug)
     debugBtn.config(text = f"Debug: {debug}")
 
+# function that toggles heurisitcs shown during debuging
 def toggleHeur():
     if (debug):
         print("toggled heuristics")
@@ -587,6 +615,7 @@ def toggleHeur():
     heuristics = not(heuristics)
     heurBtn.config(text = f"Heuristics: {heuristics}")
 
+# function that toggles tree shown durning debugging
 def toggleTree():
     if (debug):
         print("toggled tree")
@@ -594,6 +623,7 @@ def toggleTree():
     tree = not(tree)
     treeBtn.config(text = f"Tree: {tree}")
 
+# function that toggles board state shown during debugging
 def toggleBoard():
     if (debug):
         print("toggled board")
@@ -601,6 +631,7 @@ def toggleBoard():
     boardDisp = not(boardDisp)
     boardBtn.config(text = f"Board: {boardDisp}")
 
+# function that cycles the depth of the minimax function from 1 - 10
 def toggleDepth():
     global depth
 
@@ -609,6 +640,9 @@ def toggleDepth():
     if (depth >= 11):
         depth = 1
 
+    # tree is automatically toggled off for depth 
+    # of 5 and above to save resources and speed up 
+    # minimax but can be forced on 
     if (depth >= 5 and tree == True):
         toggleTree()
 
@@ -619,13 +653,13 @@ def toggleDepth():
 
 
 
-
+# layout of everything being drawn to the screen
 canvas.grid(row=0, column=0, rowspan=8)
 score.grid(row=0, column=1, columnspan=6, ipadx = 135, ipady = 20)
 
 colorBtn.grid(row=1, column=1, columnspan=6, ipadx = 88, ipady = 20)
 
-cpuBtn.grid(row=2, column=1, columnspan=2, ipadx = 40, ipady = 20)
+AIBtn.grid(row=2, column=1, columnspan=2, ipadx = 55, ipady = 20)
 startBtn.grid(row=2, column=3, columnspan=2, ipadx = 12, ipady = 20)
 resetBtn.grid(row=2, column=5, columnspan=2, ipadx = 12, ipady = 20)
 
@@ -640,10 +674,10 @@ depthBtn.grid(row=5, column=1, columnspan=6, ipadx = 235, ipady = 20)
 
 victor.grid(row=6, column=1, columnspan=6, ipadx = 295, ipady = 30)
 
-
+# links the buttons to their respective functions
 colorBtn.config(command=toggleColor)
 
-cpuBtn.config(command=toggleCPU)
+AIBtn.config(command=toggleAI)
 startBtn.config(command=startGame)
 resetBtn.config(command=resetGame)
 
@@ -656,6 +690,7 @@ boardBtn.config(command=toggleBoard)
 
 depthBtn.config(command=toggleDepth)
 
+# draw the board and start the program
 drawBoard()
 
 window.mainloop()
