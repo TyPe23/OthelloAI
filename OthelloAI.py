@@ -28,7 +28,6 @@ except:
 
 import tkinter as tk
 import math
-from time import sleep
 import copy
 
 # window using tkinter to be drawn to
@@ -36,14 +35,14 @@ window = tk.Tk()
 
 # board with heuristic values for each position
 boardHeur = [
-            [20, -7, 11, 8, 8, 11, -7, 20],
-            [-7,-10, -4, 1, 1, -4, -10,-7],
-            [11, -4,   2, 2, 2,  2,  -4, 11],
-            [ 8,  1,   2,-3,-3,  2,   1,  8],
-            [ 8,  1,   2,-3,-3,  2,   1,  8],
-            [11, -4,   2, 2, 2,  2,  -4, 11],
-            [-7,-10, -4, 1, 1, -4, -10,-7],
-            [20, -7, 11, 8, 8, 11, -7, 20]
+            [20, -3, 11, 8, 8, 11, -3, 20],
+            [-3, -7, -4, 1, 1, -4, -7, -3],
+            [11, -4,  2, 2, 2,  2, -4, 11],
+            [ 8,  1,  2,-3,-3,  2,  1,  8],
+            [ 8,  1,  2,-3,-3,  2,  1,  8],
+            [11, -4,  2, 2, 2,  2, -4, 11],
+            [-3, -7, -4, 1, 1, -4, -7, -3],
+            [20, -3, 11, 8, 8, 11, -3, 20]
         ]
 
 # starting arrangement for the board
@@ -242,27 +241,30 @@ def flipPieces(x, y, turn, board):
                 newX -= xDir
                 newY -= yDir
 
-
-                """ if (newX > 7 or newX < 0 or newY > 7 or newY < 0):
-                    break """
+    # returns the board with updated values
     return board
 
 
+# shows the valid moves for each turn
 def showValid(valid):
     for [x,y] in valid:
         placePiece(x, y, globalTurn)
         canvas.create_oval(x * 100 + 20, y * 100 + 20, x * 100 + 80, y * 100 + 80, fill="green")
 
+    # prints the valid moves of the player whose turn it is
     if (debug and boardDisp):
         print(f"Valid {globalTurn} moves: {valid}\n")
 
+    # force the window to update now instead of later, this is mostly used to ensure the cpu's moves are displayed
     window.update()
 
 
+# gets a list of the valid moves for the player and board provided
 def validMoves(turn, board):
 
     valid = []
 
+    # checks the validity of each position by calling checkPos()
     for x in range(8):
         for y in range(8):
             if (checkPos(x, y, turn, board)):
@@ -271,22 +273,18 @@ def validMoves(turn, board):
     return valid
 
 
-def getHeur(xpos, ypos, board, max):
+# heuristic function used for minimax
+def getHeur(x, y, board):
+    # grabs the score but only the cpu's score is needed so the color of the player is checked
     if (user == "black"):
         blackScore, whiteScore = getScore(board)
     else:
         whiteScore, blackScore = getScore(board)
 
-    total = 0
-    for x in range(8):
-        for y in range(8):
-            total += boardHeur[y][x]
+    # heuristic is simply white score plus the heuristic value of the x, y at the root of the tree
+    return whiteScore + boardHeur[y][x]
 
-    heuristic = whiteScore + total + boardHeur[ypos][xpos]
-
-    return heuristic
-
-
+# minimax function performed on each valid move
 def minimax(startx, starty, xpos, ypos, depth, alpha, beta, maximizingPlayer, board, stem):
 
     global numStates
@@ -296,55 +294,118 @@ def minimax(startx, starty, xpos, ypos, depth, alpha, beta, maximizingPlayer, bo
     else:
         nextTurn = cpu
     
+    # create a deep copy of the board before flippling pieces because original board would have pieces flipped as well
     tempBoard = copy.deepcopy(board)
+    # board state tracked for each node
     tempBoard = flipPieces(xpos, ypos, nextTurn, tempBoard)
+    # next set of valid moves
     next = validMoves(nextTurn, tempBoard) 
 
+    # return the heuristic value of the position if depth is zero or no valid moves
     if (depth == 0 or next == []) :
-        heur = getHeur(startx, starty, tempBoard, maximizingPlayer)
+        # get heuristic value here to be used in tree and then return
+        heur = getHeur(startx, starty, tempBoard)
+
+        # if tree is enabled and anytree is imported, 
+        # change the name of the node to the position and heuristic
         if (tree and AT):
             stem.name = f"[{xpos},{ypos}] : {heur}"
+        # if not then just increment the number of states checked
         else:
             numStates += 1
         return heur
 
+    # maximizing player
     if (maximizingPlayer):
+
+        # large neg starting value for max eval
         maxEval = -100000
+
+        # iterates through next set of valid moves
         for [x,y] in next:
+
+            # if tree is enabled and anytree is imported, 
+            # create a node for the move then make recursive minimax call
             if (tree and AT):
-                tile = Node(f"[{x},{y}]", parent=stem)
-                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, False, tempBoard, tile)
+                node = Node(f"[{x},{y}]", parent=stem)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, False, tempBoard, node)
+
+            # if not, save memory by simply reusing the parent node
+            # and increment number of states checked
             else:
                 numStates += 1
                 eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, False, tempBoard, stem)
+
+            # set max eval to larger value
             maxEval = max(maxEval, eval)
+
+            # if AB pruning is enabled
             if (alphaBeta):
+                # set alpha to larger value
                 alpha = max(alpha, eval)
+
+                # if beta is smaller than alpha, prune
                 if (beta <= alpha):
+
+                    # if tree is enabled and anytree is imported,
+                    # set the node's name to reflect that it has been pruned
+                    if (tree and AT):    
+                        node.name = f"[{x},{y}] : {maxEval} (pruned)"
                     break
+
+            # if tree is enabled and anytree is imported,
+            # set the node's name to reflect it's heuristic
             if (tree and AT):    
-                tile.name = f"[{x},{y}] : {maxEval}"
+                node.name = f"[{x},{y}] : {maxEval}"
+
         return maxEval
 
+    # minimizing player
     else:
+        # large pos starting value for max eval
         minEval = 100000
+
+        # iterates through next set of valid moves
         for [x,y] in next:
+
+            # if tree is enabled and anytree is imported, 
+            # create a node for the move then make recursive minimax call
             if (tree and AT):
-                tile = Node(f"[{x},{y}]", parent=stem)
-                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, True, tempBoard, tile)
+                node = Node(f"[{x},{y}]", parent=stem)
+                eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, True, tempBoard, node)
+
+            # if not, save memory by simply reusing the parent node
+            # and increment number of states checked
             else:
                 numStates += 1
                 eval = minimax(startx, starty, x, y, depth - 1, alpha, beta, True, tempBoard, stem)
+
+            # set min eval to smaller value
             minEval = min(minEval, eval)
-            beta = min(beta, eval)
+
+            # if AB pruning is enabled
             if (alphaBeta):
+
+                # set bata to the smaller value
+                beta = min(beta, eval)
+
+                # if beta is smaller than alpha, prune
                 if (beta <= alpha):
+
+                    # if tree is enabled and anytree is imported,
+                    # set the node's name to reflect that it has been pruned
+                    if (tree and AT):    
+                        node.name = f"[{x},{y}] : {minEval} (pruned)"
                     break
+
+            # if tree is enabled and anytree is imported,
+            # set the node's name to reflect it's heuristic
             if (tree and AT):    
-                tile.name = f"[{x},{y}] : {minEval}"
+                node.name = f"[{x},{y}] : {minEval}"
+
         return minEval
 
-
+# displays the victor
 def displayVictor():
     black, white = getScore(boardArr)
     if (black > white):
@@ -360,6 +421,7 @@ def displayVictor():
     victor.config(text = myText)
 
 
+# function that controls the cpu
 def cpuMove(board):
     global globalTurn
     global numStates
@@ -446,7 +508,6 @@ def mouseXY(event):
     if (cpuOn and globalTurn == cpu):
         cpuSkip = False
         cpuMove(boardArr)
-        sleep(0.5)
         drawBoard()
 
     if (validMoves(user, boardArr) == [] and validMoves(cpu, boardArr) == []):
